@@ -1,0 +1,2619 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chaosverb</title>
+  <script type="module" src="js/juce/index.js"></script>
+  <style>
+    /* ─── WEBVIEW FOUNDATION ─── */
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: default;
+      overflow: hidden;
+      background: #0e0e0e;
+      color: #e0e0e0;
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 11px;
+    }
+
+    /* ─── PLUGIN SHELL ─── */
+    .plugin-shell {
+      width: 900px;
+      height: 400px;
+      background: #0e0e0e;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Subtle noise texture overlay for depth */
+    .plugin-shell::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.06;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+
+    .plugin-shell > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ─── HEADER ─── */
+    .header {
+      width: 100%;
+      height: 54px;
+      background: #0e0e0e;
+      border-bottom: 1px solid #2a2a2a;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .plugin-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: #ffffff;
+      line-height: 1;
+    }
+
+    .plugin-tagline {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #777777;
+      line-height: 1;
+    }
+
+    /* Credit line under title — same letter-spacing root + same indent
+       so first character aligns with the C in CHAOSVERB visually */
+    .plugin-credit {
+      font-size: 8px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #777777;
+      line-height: 1;
+      margin-top: 3px;
+      padding-left: 0;
+    }
+
+    .header-center {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .header-center>* {
+      pointer-events: auto;
+    }
+
+    .mutate-btn {
+      background: transparent;
+      border: 1px solid #444444;
+      color: #888888;
+      font-family: inherit;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 6px 0;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 6px rgba(0, 212, 255, 0.15), inset 0 0 4px rgba(0, 212, 255, 0.05);
+      width: 130px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .mutate-btn:hover {
+      border-color: #00d4ff;
+      color: #00d4ff;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+    }
+
+    .mutate-btn:active {
+      background: rgba(0, 212, 255, 0.08);
+    }
+
+    .mutate-btn.firing {
+      border-color: #ffffff;
+      color: #ffffff;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+    }
+
+    .default-btn {
+      background: transparent;
+      border: 1px solid #444444;
+      color: #888888;
+      font-family: inherit;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 6px 0;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 6px rgba(0, 212, 255, 0.15), inset 0 0 4px rgba(0, 212, 255, 0.05);
+      margin-left: 8px;
+      /* Fixed width — wide enough for longest label "SAVE AS DEFAULT"
+         so button doesn't reflow when text changes */
+      width: 130px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .default-btn:hover {
+      border-color: #00d4ff;
+      color: #00d4ff;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+    }
+
+    .default-btn:active {
+      background: rgba(0, 212, 255, 0.08);
+    }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+      position: relative;
+      z-index: 15;
+    }
+
+    .countdown-label {
+      font-size: 7px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #444444;
+      line-height: 1;
+    }
+
+    .countdown {
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #00d4ff;
+      line-height: 1;
+      transition: color 0.3s ease;
+      text-shadow: 0 0 12px rgba(0, 212, 255, 0.6);
+      width: 100px;
+      text-align: right;
+    }
+
+    .countdown.stopped {
+      color: #3ab8d4;
+      text-shadow: 0 0 14px rgba(58, 184, 212, 0.7);
+    }
+
+    .timer-toggle {
+      background: transparent;
+      border: 1px solid #333333;
+      color: #666666;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+      z-index: 20;
+      width: 66px;
+      padding: 8px 0;
+      font-family: inherit;
+      text-align: center;
+      line-height: 1;
+      user-select: none;
+      -webkit-user-select: none;
+      display: block;
+    }
+
+    .timer-toggle::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .timer-toggle:hover {
+      border-color: #888888;
+      color: #aaaaaa;
+    }
+
+    .timer-toggle.is-stopped {
+      border-color: #bbbbbb;
+      color: #dddddd;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .timer-toggle.is-stopped:hover {
+      border-color: #ffffff;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .countdown.warning {
+      color: #3ab8d4;
+      text-shadow: 0 0 16px rgba(58, 184, 212, 0.9);
+      animation: pulse-warning 0.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse-warning {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0.65;
+      }
+    }
+
+    /* ─── BODY ─── */
+    .body {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      padding: 0;
+      position: relative;
+    }
+
+    /* ─── SECTION COLUMNS ─── */
+    .section-col {
+      display: flex;
+      flex-direction: column;
+      padding: 6px 0 4px 0;
+      position: relative;
+    }
+
+    .section-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #444444;
+      padding: 4px 0 6px 0;
+      text-align: center;
+      width: 100%;
+    }
+
+    /* Clickable section titles — toggle group lock for all params in section */
+    .section-label[data-section] {
+      cursor: pointer;
+      user-select: none;
+      transition: filter 0.15s ease, text-shadow 0.15s ease;
+      position: relative;
+    }
+    .section-label[data-section]:hover {
+      filter: brightness(1.6);
+    }
+    .section-label[data-section].locked {
+      filter: brightness(1.9);
+      text-shadow: 0 0 calc(5px * var(--ui-scale, 1)) currentColor;
+    }
+
+    /* ─── SECTIONS ─── */
+    .section-space {
+      width: 96px;
+      padding: 10px 14px 10px 14px;
+      border-right: 1px solid #222222;
+    }
+
+    .section-spectral {
+      width: 96px;
+      padding: 10px 14px 10px 14px;
+      border-right: 1px solid #222222;
+    }
+
+    .section-tone {
+      width: 96px;
+      padding: 10px 14px 10px 14px;
+      border-right: 1px solid #222222;
+    }
+
+    .section-motion {
+      width: 96px;
+      padding: 10px 14px 10px 14px;
+      border-right: 1px solid #222222;
+    }
+
+    .section-duck {
+      width: 86px;
+      padding: 10px 14px 10px 14px;
+    }
+
+    .section-mutation-output {
+      flex: 1;
+      padding: 10px 14px 10px 14px;
+      border-left: 1px solid #222222;
+    }
+
+    /* ─── KNOB GRID ─── */
+    .knob-grid-2x2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 14px;
+      margin-top: 2px;
+    }
+
+    .knob-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 2px;
+      align-items: center;
+    }
+
+    .output-knob-row {
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 2px;
+    }
+
+    /* ─── KNOB COMPONENT ─── */
+    .knob-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: ns-resize;
+    }
+
+    .knob-body {
+      width: 56px;
+      height: 56px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .knob-body canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 56px;
+      height: 56px;
+    }
+
+    .knob-face {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, #5a5a5a 0%, #404040 50%, #2e2e2e 100%);
+      border: 1px solid #606060;
+      box-shadow:
+        0 2px 4px rgba(0, 0, 0, 0.5),
+        inset 0 1px 1px rgba(255, 255, 255, 0.06);
+      z-index: 2;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .knob-indicator {
+      position: absolute;
+      top: 3px;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      margin-left: -2.5px;
+      border-radius: 50%;
+      transform-origin: 50% 17px;
+      z-index: 3;
+      transition: background 0.2s;
+    }
+
+    .knob-label {
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #666666;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .knob-value {
+      font-size: 8px;
+      letter-spacing: 0.04em;
+      color: #888888;
+      text-align: center;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .knob-body.locked .knob-face {
+      border-color: transparent;
+    }
+
+    /* ─── KNOB TOOLTIP ─── */
+    /* Tooltips live on document.body (outside the zoomed #pluginShell),
+       so we scale them via --ui-scale to match the current plugin size. */
+    .knob-tooltip {
+      position: fixed;
+      background: #1a1a1a;
+      border: 1px solid #444444;
+      color: #cccccc;
+      font-size: calc(9px * var(--ui-scale, 1));
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      padding: calc(5px * var(--ui-scale, 1)) calc(8px * var(--ui-scale, 1));
+      border-radius: calc(4px * var(--ui-scale, 1));
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 200;
+      box-shadow: 0 calc(2px * var(--ui-scale, 1)) calc(8px * var(--ui-scale, 1)) rgba(0, 0, 0, 0.5);
+    }
+
+    .knob-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: calc(4px * var(--ui-scale, 1)) solid transparent;
+      border-top-color: #444444;
+    }
+
+    .knob-tooltip.visible {
+      opacity: 1;
+    }
+
+    /* ─── SETTINGS BUTTON (gear icon, bottom-right) ─── */
+    .settings-btn {
+      position: absolute;
+      bottom: 10px;
+      right: 14px;
+      background: transparent;
+      border: none;
+      color: #555555;
+      padding: 0;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      transition: color 0.15s ease, transform 0.3s ease;
+      z-index: 95;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .settings-btn svg { width: 100%; height: 100%; display: block; }
+    .settings-btn:hover { color: #aaaaaa; transform: rotate(45deg); }
+    .settings-btn.open { color: #c77dff; transform: rotate(90deg); }
+
+    /* ─── SETTINGS POPOVER (anchored above gear button) ─── */
+    .settings-popover {
+      position: absolute;
+      bottom: 36px;
+      right: 10px;
+      width: 240px;
+      background: linear-gradient(180deg, #1c1c1e 0%, #141416 100%);
+      border: 1px solid #2e2e30;
+      border-radius: 8px;
+      padding: 12px 14px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px) scale(0.97);
+      transform-origin: bottom right;
+      transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      color: #d8d8d8;
+    }
+    .settings-popover.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+    .settings-popover h3 {
+      margin: 0 0 8px 0;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #ffffff;
+    }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #232325;
+      font-size: 11px;
+    }
+    .settings-row:last-of-type { border-bottom: none; }
+    .settings-row-label {
+      color: #aaaaaa;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+    }
+    .settings-row-value {
+      color: #ffffff;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      min-width: 36px;
+      text-align: center;
+    }
+    .settings-toggle {
+      width: 28px; height: 16px;
+      background: #333;
+      border-radius: 8px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      border: none;
+    }
+    .settings-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 12px; height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      transition: left 0.15s ease;
+    }
+    .settings-toggle.on { background: #c77dff; }
+    .settings-toggle.on::after { left: 14px; }
+    .settings-mini-btn {
+      width: 22px; height: 18px;
+      background: #2a2a2c;
+      border: 1px solid #3a3a3c;
+      color: #c77dff;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.12s ease;
+    }
+    .settings-mini-btn:hover { background: #3a3a3c; }
+    .settings-preset-btn {
+      flex: 1;
+      padding: 5px 0;
+      background: #2a2a2c;
+      border: 1px solid #3a3a3c;
+      color: #c8c8c8;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      font-family: inherit;
+    }
+    .settings-preset-btn:hover { background: #3a3a3c; color: #fff; }
+    .settings-preset-btn.active {
+      background: rgba(199, 125, 255, 0.18);
+      border-color: #c77dff;
+      color: #c77dff;
+    }
+    .settings-presets-row {
+      display: flex; gap: 4px;
+      padding: 6px 0;
+      border-bottom: 1px solid #232325;
+    }
+    .settings-save-btn {
+      width: 100%;
+      padding: 7px 0;
+      margin-top: 10px;
+      background: #c77dff;
+      color: #1a0a2e;
+      border: none;
+      border-radius: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: filter 0.12s ease;
+      font-family: inherit;
+    }
+    .settings-save-btn:hover { filter: brightness(1.1); }
+    .settings-save-btn.saved {
+      background: #6bff8e;
+      color: #0a2e1a;
+    }
+
+    /* ─── HORIZONTAL SLIDER ─── */
+    .hslider-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      width: 100%;
+    }
+
+    .hslider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .hslider-label {
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #666666;
+    }
+
+    .hslider-value {
+      font-size: 8px;
+      color: #888888;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hslider-track {
+      width: 100%;
+      height: 26px;
+      background: #1a1210;
+      border: 1px solid #3a2a22;
+      border-radius: 13px;
+      position: relative;
+      cursor: ew-resize;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .hslider-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #4a2a1a, #8b2020);
+      border-radius: 13px;
+    }
+
+    .hslider-thumb {
+      display: none;
+    }
+
+    .hslider-track:hover .hslider-thumb {
+      display: none;
+    }
+
+    /* ─── MUTATION FLASH OVERLAY ─── */
+    .mutation-flash {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.12);
+      pointer-events: none;
+      opacity: 0;
+      z-index: 100;
+    }
+
+    .mutation-flash.active {
+      animation: flash-burst 0.4s ease-out forwards;
+    }
+
+    @keyframes flash-burst {
+      0% {
+        opacity: 0.15;
+      }
+
+      20% {
+        opacity: 0.08;
+      }
+
+      100% {
+        opacity: 0;
+      }
+    }
+
+    /* ─── FLUTTER TOGGLE BUTTON ─── */
+    .flutter-toggle {
+      background: transparent;
+      border: 1px solid #333333;
+      color: #666666;
+      font-family: inherit;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      line-height: 1;
+      width: 100%;
+      text-align: center;
+    }
+
+    .flutter-toggle:hover {
+      border-color: #888888;
+      color: #aaaaaa;
+    }
+
+    .flutter-toggle.active {
+      border-color: #9b59b6;
+      color: #9b59b6;
+      box-shadow: 0 0 8px rgba(155, 89, 182, 0.3);
+    }
+
+    .flutter-toggle.active:hover {
+      border-color: #b07cc7;
+      color: #b07cc7;
+    }
+
+    /* ─── FADER ROW (fader + mode button) ─── */
+    .hslider-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .hslider-flex {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mode-toggle-spacer {
+      width: 34px;
+      flex-shrink: 0;
+    }
+
+    /* Align button to center of fader track height (skip the header row) */
+    .hslider-row > .mode-toggle,
+    .hslider-row > .mode-toggle-spacer {
+      margin-bottom: 5px;
+    }
+
+    /* ─── MODE TOGGLE (SYNC/MS) ─── */
+    .mode-toggle {
+      background: transparent;
+      border: 1px solid #c77dff;
+      color: #c77dff;
+      font-family: inherit;
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 0;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      line-height: 1;
+      white-space: nowrap;
+      flex-shrink: 0;
+      width: 34px;
+      text-align: center;
+    }
+
+    .mode-toggle:hover {
+      border-color: #d9a0ff;
+      color: #d9a0ff;
+    }
+
+    .mode-toggle.is-ms {
+      border-color: #00d4ff;
+      color: #00d4ff;
+    }
+
+    /* ─── BYPASS BUTTON ─── */
+    .bypass-btn {
+      background: transparent;
+      border: 1px solid #333333;
+      color: #666666;
+      font-family: inherit;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      line-height: 1;
+      text-align: center;
+      position: relative;
+      z-index: 95;
+    }
+
+    .bypass-btn:hover {
+      border-color: #888888;
+      color: #aaaaaa;
+    }
+
+    .bypass-btn.active {
+      border-color: #ff3333;
+      color: #ff3333;
+      box-shadow: 0 0 8px rgba(255, 51, 51, 0.3);
+    }
+
+    .bypass-btn.active:hover {
+      border-color: #ff5555;
+      color: #ff5555;
+    }
+
+    /* ─── BYPASS DIM OVERLAY ─── */
+    .bypass-dim {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      z-index: 90;
+    }
+
+    .bypass-dim.active {
+      opacity: 1;
+    }
+
+    /* ─── SECTION LABEL COLORS ─── */
+    .section-space .section-label {
+      color: #2a8fa0;
+    }
+
+    .section-spectral .section-label {
+      color: #2a8fa0;
+    }
+
+    .section-tone .section-label {
+      color: #2a9a6a;
+    }
+
+    .section-motion .section-label {
+      color: #8a50a8;
+    }
+
+    .section-duck .section-label {
+      color: #c07828;
+    }
+
+    .section-mutation-output .section-label {
+      color: #2a8fa0;
+    }
+
+    /* ─── LICENSE OVERLAY ─── */
+    /* Sits on document.body OUTSIDE the zoomed #pluginShell so it always
+       fills the entire WebView at native resolution (sharp text). */
+    .license-overlay {
+      position: fixed; inset: 0;
+      background: rgba(8, 8, 10, 0.96);
+      backdrop-filter: blur(6px);
+      z-index: 10000;
+      display: flex;
+      align-items: center; justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease, backdrop-filter 0.35s ease;
+    }
+    .license-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .license-card {
+      background: linear-gradient(180deg, #1a1a1c 0%, #121214 100%);
+      border: 1px solid #2a2a2c;
+      border-radius: 10px;
+      padding: 28px 32px;
+      width: 380px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      color: #d8d8d8;
+      transform: scale(0.96) translateY(-6px);
+      transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+    .license-overlay.visible .license-card {
+      transform: scale(1) translateY(0);
+    }
+    .license-card h2 {
+      margin: 0 0 4px 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #ffffff;
+    }
+    .license-card .license-sub {
+      margin: 0 0 18px 0;
+      font-size: 11px;
+      color: #888;
+      letter-spacing: 0.04em;
+    }
+    .license-card label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #999;
+      margin: 8px 0 6px 0;
+    }
+    .license-card input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px 10px;
+      background: #0c0c0d;
+      border: 1px solid #333;
+      border-radius: 5px;
+      color: #fff;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+    }
+    .license-card input:focus {
+      outline: none;
+      border-color: #c77dff;
+      box-shadow: 0 0 0 2px rgba(199, 125, 255, 0.18);
+    }
+    .license-btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background: #c77dff;
+      color: #1a0a2e;
+      border: none;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    .license-btn:hover { filter: brightness(1.1); }
+    .license-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .license-btn.secondary {
+      background: transparent;
+      color: #c77dff;
+      border: 1px solid #c77dff;
+    }
+    .license-btn.secondary:hover { background: rgba(199, 125, 255, 0.08); }
+    .license-btn.danger {
+      background: transparent;
+      color: #ff6b6b;
+      border: 1px solid #ff6b6b;
+    }
+    .license-btn.danger:hover { background: rgba(255, 107, 107, 0.08); }
+    .license-msg {
+      margin: 12px 0 0 0;
+      font-size: 11px;
+      min-height: 14px;
+      text-align: center;
+    }
+    .license-msg.error   { color: #ff6b6b; }
+    .license-msg.success { color: #6bff8e; }
+    .license-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 16px 0 10px 0;
+      color: #555;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+    }
+    .license-divider::before,
+    .license-divider::after {
+      content: ''; flex: 1; height: 1px; background: #2a2a2c;
+    }
+    .license-buy {
+      margin: 16px 0 0 0;
+      text-align: center;
+      font-size: 11px;
+      color: #888;
+    }
+    .license-buy a { color: #c77dff; text-decoration: none; }
+    .license-buy a:hover { text-decoration: underline; }
+    /* Trial chip — small clickable badge bottom-right, left of ? button */
+    .trial-chip {
+      display: none;
+      position: absolute;
+      bottom: 10px;
+      right: 36px;            /* sits left of .settings-btn (right: 14px + 16px width + 6px gap) */
+      padding: 1px 6px;
+      background: rgba(199, 125, 255, 0.12);
+      border: 1px solid rgba(199, 125, 255, 0.45);
+      color: #c77dff;
+      border-radius: 8px;
+      font-size: 7px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      line-height: 12px;
+      height: 14px;
+      box-sizing: border-box;
+      cursor: pointer;
+      z-index: 95;
+      transition: filter 0.15s ease, background 0.15s ease;
+    }
+    .trial-chip.visible { display: inline-block; }
+    .trial-chip:hover {
+      filter: brightness(1.3);
+      background: rgba(199, 125, 255, 0.22);
+    }
+
+    /* Close button on overlay (so trial users can dismiss) */
+    .license-close {
+      position: absolute;
+      top: 8px; right: 12px;
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .license-close:hover { color: #ddd; }
+    .license-card { position: relative; }
+  </style>
+</head>
+
+<body>
+  <div class="plugin-shell" id="pluginShell">
+
+    <!-- MUTATION FLASH OVERLAY -->
+    <div class="mutation-flash" id="mutationFlash"></div>
+
+    <!-- BYPASS DIM OVERLAY -->
+    <div class="bypass-dim" id="bypassDim"></div>
+
+    <!-- SETTINGS BUTTON + TRIAL CHIP (bottom-right) -->
+    <button class="settings-btn" id="settingsBtn" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+    <button class="trial-chip" id="trialChip" title="Click to enter your license key">TRIAL</button>
+
+    <!-- SETTINGS POPOVER -->
+    <div class="settings-popover" id="settingsPopover">
+      <h3>Settings</h3>
+
+      <div class="settings-row">
+        <span class="settings-row-label">Tooltips</span>
+        <button class="settings-toggle" id="settingsTooltipToggle"></button>
+      </div>
+
+      <div style="padding: 6px 0; border-bottom: 1px solid #232325;">
+        <div class="settings-row-label" style="margin-bottom: 6px;">Window Size</div>
+        <div style="display:flex; gap:4px;">
+          <button class="settings-preset-btn" data-w="720"  data-h="320">SM</button>
+          <button class="settings-preset-btn" data-w="900"  data-h="400">MD</button>
+          <button class="settings-preset-btn" data-w="1200" data-h="533">LG</button>
+          <button class="settings-preset-btn" data-w="1500" data-h="666">XL</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <span class="settings-row-label">Brightness</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="settings-mini-btn" id="brightnessDown">−</button>
+          <span class="settings-row-value" id="brightnessValue">100%</span>
+          <button class="settings-mini-btn" id="brightnessUp">+</button>
+        </div>
+      </div>
+
+      <button class="settings-save-btn" id="settingsSaveBtn">Save as Default</button>
+    </div>
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="header-left">
+        <div class="plugin-title">Chaosverb</div>
+        <div class="plugin-credit">by Entropia Audio &nbsp;·&nbsp; v0.0.8b</div>
+      </div>
+
+      <div class="header-center">
+        <button class="mutate-btn" id="mutateBtn">Mutate Now</button>
+        <button class="default-btn" id="defaultBtn">Default</button>
+      </div>
+
+      <div class="header-right">
+        <div
+          style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: 174px; min-width: 174px; flex-shrink: 0;">
+          <button class="timer-toggle" id="timerToggle">STOP</button>
+          <div class="countdown stopped" id="countdown">--:--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="body">
+
+      <!-- SPACE SECTION -->
+      <div class="section-col section-space">
+        <div class="section-label" data-section="space" title="Click to lock/unlock all Space parameters">Space</div>
+        <div class="knob-col">
+          <div id="knob_decay"></div>
+          <div id="knob_preDelay"></div>
+          <div id="knob_density"></div>
+        </div>
+      </div>
+
+      <!-- SPECTRAL SECTION -->
+      <div class="section-col section-spectral">
+        <div class="section-label" data-section="spectral" title="Click to lock/unlock all Spectral parameters">Spectral</div>
+        <div class="knob-col">
+          <div id="knob_gravity"></div>
+          <div id="knob_spectralTilt"></div>
+          <div id="knob_saturation"></div>
+        </div>
+      </div>
+
+      <!-- TONE SECTION -->
+      <div class="section-col section-tone">
+        <div class="section-label" data-section="tone" title="Click to lock/unlock all Tone parameters">Tone</div>
+        <div class="knob-col">
+          <div id="knob_lowCut"></div>
+          <div id="knob_tilt"></div>
+          <div id="knob_highCut"></div>
+        </div>
+      </div>
+
+      <!-- MOTION SECTION (Chorus, Mod Depth, Flutter + toggle) -->
+      <div class="section-col section-motion">
+        <div class="section-label" data-section="motion" title="Click to lock/unlock all Motion parameters">Motion</div>
+        <div class="knob-col">
+          <div id="knob_modRate"></div>
+          <div id="knob_flutterSpeed"></div>
+          <div id="knob_wowFlutterAmount"></div>
+          <button class="flutter-toggle" id="flutterToggle">OFF</button>
+        </div>
+      </div>
+
+      <!-- DUCK SECTION (Amount, Attack, Release) -->
+      <div class="section-col section-duck">
+        <div class="section-label" data-section="duck" title="Click to lock/unlock all Duck parameters">Duck</div>
+        <div class="knob-col">
+          <div id="knob_duckingAmount"></div>
+          <div id="knob_duckAttack"></div>
+          <div id="knob_duckRelease"></div>
+        </div>
+      </div>
+
+      <!-- MUTATION + OUTPUT COMBINED SECTION -->
+      <div class="section-col section-mutation-output">
+        <div class="section-label">Mutation</div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="hslider-row">
+            <div id="hslider_mutationInterval" class="hslider-flex"></div>
+            <button class="mode-toggle" id="intervalModeToggle">SYNC</button>
+          </div>
+          <div class="hslider-row">
+            <div id="hslider_crossfadeSpeed" class="hslider-flex"></div>
+            <button class="mode-toggle" id="crossfadeModeToggle">SYNC</button>
+          </div>
+          <div class="hslider-row">
+            <div id="hslider_mutationAmount" class="hslider-flex"></div>
+            <div class="mode-toggle-spacer"></div>
+          </div>
+        </div>
+        <div class="section-label" data-section="output" style="margin-top:12px;" title="Click to lock/unlock all Output parameters">Output</div>
+        <div class="output-knob-row">
+          <div id="knob_width"></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+            <div id="knob_mix"></div>
+            <button class="bypass-btn" id="bypassBtn">Bypass</button>
+          </div>
+          <div id="knob_outputLevel"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- License overlay (outside zoomed shell — always native resolution) -->
+  <div class="license-overlay" id="licenseOverlay">
+    <div class="license-card">
+      <button class="license-close" id="licenseClose" title="Close">×</button>
+      <h2 id="licenseTitle">Chaosverb — Activation Required</h2>
+      <p class="license-sub" id="licenseSubtitle">Enter your license key to activate.</p>
+
+      <label for="licenseKeyInput">License Key</label>
+      <input type="text" id="licenseKeyInput" placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX" autocomplete="off" spellcheck="false" />
+      <button class="license-btn" id="activateBtn">Activate</button>
+
+      <div class="license-divider" id="trialDivider">OR</div>
+      <button class="license-btn secondary" id="trialBtn">Start 7-Day Free Trial</button>
+
+      <div class="license-divider" id="deactivateDivider" style="display:none;">MANAGE</div>
+      <button class="license-btn danger" id="deactivateBtn" style="display:none;">Deactivate This Computer</button>
+
+      <p class="license-msg" id="licenseMsg"></p>
+
+      <p class="license-buy">
+        Don't have a key? <a href="#" id="buyLink">Buy Chaosverb</a>
+      </p>
+    </div>
+  </div>
+
+  <script type="module">
+    "use strict";
+
+    import { getSliderState, getToggleState, getNativeFunction } from './js/juce/index.js';
+
+    // ─── NATIVE FUNCTIONS (JS → C++) ─────────────────────────────────────────────
+    const mutateNowFn = getNativeFunction("mutateNow");
+    const toggleMutationTimerFn = getNativeFunction("toggleMutationTimer");
+    const getMutationStateFn = getNativeFunction("getMutationState");
+    const resetToDefaultsFn = getNativeFunction("resetToDefaults");
+    const saveCurrentAsDefaultsFn = getNativeFunction("saveCurrentAsDefaults");
+
+    // License engine bridges
+    const getLicenseStatusFn   = getNativeFunction("getLicenseStatus");
+    const activateLicenseFn    = getNativeFunction("activateLicense");
+    const startTrialFn         = getNativeFunction("startTrial");
+    const deactivateLicenseFn  = getNativeFunction("deactivateLicense");
+    const openExternalURLFn    = getNativeFunction("openExternalURL");
+    const setEditorSizeFn      = getNativeFunction("setEditorSize");
+
+    // ─── DISABLE CONTEXT MENU ─────────────────────────────────────────────────────
+    document.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      return false;
+    });
+
+    // ─── JUCE PARAMETER STATES ────────────────────────────────────────────────────
+    // Float parameters — getSliderState (Pattern 21 + Pattern 19)
+    const decayState = getSliderState("decay");
+    const preDelayState = getSliderState("preDelay");
+    const densityState = getSliderState("density");
+    const spectralTiltState = getSliderState("spectralTilt");
+    const saturationState = getSliderState("saturation");
+    const modRateState = getSliderState("modRate");
+    const flutterSpeedState = getSliderState("flutterSpeed");
+    const mutationIntervalState = getSliderState("mutationInterval");
+    const intervalModeState = getSliderState("intervalMode");
+    const crossfadeModeState = getSliderState("crossfadeMode");
+    const crossfadeSpeedState = getSliderState("crossfadeSpeed");
+    const mutationAmountState = getSliderState("mutationAmount");
+    const widthState = getSliderState("width");
+    const mixState = getSliderState("mix");
+    const lowCutState = getSliderState("lowCut");
+    const highCutState = getSliderState("highCut");
+    const tiltState = getSliderState("tilt");
+    const wowFlutterAmountState = getSliderState("wowFlutterAmount");
+    const outputLevelState = getSliderState("outputLevel");
+    const duckingAmountState = getSliderState("duckingAmount");
+    const duckAttackState = getSliderState("duckAttack");
+    const duckReleaseState = getSliderState("duckRelease");
+    const gravityState = getSliderState("gravity");
+
+    // Bool parameters — getToggleState (Pattern 19)
+    const decayLockState = getToggleState("decayLock");
+    const preDelayLockState = getToggleState("preDelayLock");
+    const densityLockState = getToggleState("densityLock");
+    const spectralTiltLockState = getToggleState("spectralTiltLock");
+    const saturationLockState = getToggleState("saturationLock");
+    const modRateLockState = getToggleState("modRateLock");
+    const flutterSpeedLockState = getToggleState("flutterSpeedLock");
+    const widthLockState = getToggleState("widthLock");
+    const mixLockState = getToggleState("mixLock");
+    const lowCutLockState = getToggleState("lowCutLock");
+    const highCutLockState = getToggleState("highCutLock");
+    const tiltLockState = getToggleState("tiltLock");
+    const wowFlutterAmountLockState = getToggleState("wowFlutterAmountLock");
+    const wowFlutterEnabledState = getToggleState("wowFlutterEnabled");
+    const outputLevelLockState = getToggleState("outputLevelLock");
+    const duckingAmountLockState = getToggleState("duckingAmountLock");
+    const duckAttackLockState = getToggleState("duckAttackLock");
+    const duckReleaseLockState = getToggleState("duckReleaseLock");
+    const gravityLockState = getToggleState("gravityLock");
+    const bypassState = getToggleState("bypass");
+
+    // ─── PARAMETER META TABLE ─────────────────────────────────────────────────────
+    // Used by knob/slider builders for formatting and rendering
+    const KNOB_PARAMS = {
+      decay: { label: "Decay", unit: "%", min: 0, max: 100, section: "space", state: decayState, lockState: decayLockState, defaultNorm: 0.384, tip: "Reverb tail length" },
+      preDelay: { label: "Pre-Delay", unit: "bipolar-pd", min: -500, max: 500, section: "space", state: preDelayState, lockState: preDelayLockState, defaultNorm: 0.5, tip: "Time before reverb starts" },
+      density: { label: "Density", unit: "%", min: 0, max: 100, section: "space", state: densityState, lockState: densityLockState, defaultNorm: 0.6, tip: "Reflection density and thickness" },
+      spectralTilt: { label: "Squash", unit: "", min: -100, max: 100, section: "spectral", state: spectralTiltState, lockState: spectralTiltLockState, defaultNorm: 0.5, tip: "Spectral compression amount" },
+      saturation: { label: "Saturation", unit: "%", min: 0, max: 100, section: "spectral", state: saturationState, lockState: saturationLockState, defaultNorm: 0.0, tip: "Harmonic distortion in the reverb" },
+      modRate: { label: "Chorus", unit: "Hz", min: 0.01, max: 10, section: "motion", state: modRateState, lockState: modRateLockState, defaultNorm: 0.348, tip: "Chorus modulation speed" },
+      flutterSpeed: { label: "F. Speed", unit: "uni-pct", min: 0, max: 100, section: "motion", state: flutterSpeedState, lockState: flutterSpeedLockState, defaultNorm: 0.5, tip: "Flutter oscillation speed" },
+      width: { label: "Width", unit: "%", min: 0, max: 400, section: "output", state: widthState, lockState: widthLockState, defaultNorm: 0.25, tip: "Stereo width of the reverb" },
+      mix: { label: "Mix", unit: "%", min: 0, max: 100, section: "output", state: mixState, lockState: mixLockState, defaultNorm: 0.5, tip: "Dry/wet balance" },
+      lowCut: { label: "Low Cut", unit: "Hz", min: 20, max: 2000, section: "tone", state: lowCutState, lockState: lowCutLockState, defaultNorm: 0.483, tip: "Remove low frequencies" },
+      highCut: { label: "High Cut", unit: "Hz", min: 1000, max: 20000, section: "tone", state: highCutState, lockState: highCutLockState, defaultNorm: 0.770, tip: "Remove high frequencies" },
+      tilt: { label: "Tilt", unit: "", min: -100, max: 100, section: "tone", state: tiltState, lockState: tiltLockState, defaultNorm: 0.45, tip: "Tonal balance control" },
+      wowFlutterAmount: { label: "Flutter", unit: "%", min: 0, max: 100, section: "flutter", state: wowFlutterAmountState, lockState: wowFlutterAmountLockState, defaultNorm: 0.0, tip: "Tape-style pitch wobble amount" },
+      outputLevel: { label: "Level", unit: "dB-level", min: -12, max: 24, section: "output", state: outputLevelState, lockState: outputLevelLockState, defaultNorm: 0.5, tip: "Wet gain" },
+      duckingAmount: { label: "Amount", unit: "%", min: 0, max: 100, section: "duck", state: duckingAmountState, lockState: duckingAmountLockState, defaultNorm: 0.0, tip: "How much reverb ducks on input" },
+      duckAttack: { label: "Attack", unit: "ms", min: 1, max: 100, section: "duck", state: duckAttackState, lockState: duckAttackLockState, defaultNorm: 0.04, tip: "How fast ducking engages" },
+      duckRelease: { label: "Release", unit: "ms", min: 20, max: 1000, section: "duck", state: duckReleaseState, lockState: duckReleaseLockState, defaultNorm: 0.5, tip: "How fast ducking releases" },
+      gravity: { label: "Damping", unit: "", min: -100, max: 100, section: "spectral", state: gravityState, lockState: gravityLockState, defaultNorm: 0.5, tip: "Low/High frequencies decay time" },
+    };
+
+    // Mode toggles: false = SYNC (BPM divisions), true = MS (free milliseconds)
+    let intervalModeMs = false;
+    let crossfadeModeMs = false;
+
+    const HSLIDER_PARAMS = {
+      mutationInterval: {
+        label: "Interval", min: 0, max: 10, accentColor: "#00d4ff", tip: "Time between mutations", state: mutationIntervalState, formatFn: (n) => {
+          if (intervalModeMs) {
+            const ms = Math.round(n * 5000);
+            return ms === 0 ? "OFF" : ms + "ms";
+          }
+          const step = Math.round(n * 10);
+          const labels = ["OFF","1/16","1/8","1/4","1/2","1 BAR","2 BAR","3 BAR","4 BAR","6 BAR","8 BAR"];
+          return labels[step] || "OFF";
+        }
+      },
+      crossfadeSpeed: {
+        label: "Crossfade", min: 0, max: 10, accentColor: "#00d4ff", tip: "Mutation crossfade duration", state: crossfadeSpeedState, formatFn: (n) => {
+          if (crossfadeModeMs) {
+            const ms = Math.round(n * 5000);
+            return ms === 0 ? "OFF" : ms + "ms";
+          }
+          const step = Math.round(n * 10);
+          const labels = ["OFF","1/16","1/8","1/4","1/2","1 BAR","2 BAR","3 BAR","4 BAR","6 BAR","8 BAR"];
+          return labels[step] || "OFF";
+        }
+      },
+      mutationAmount: {
+        label: "Mutation Amount", min: 0, max: 100, accentColor: "#00d4ff", tip: "How much parameters change per mutation", state: mutationAmountState, formatFn: (n) => {
+          return Math.round(n * 100) + "%";
+        }
+      },
+    };
+
+    const SECTION_COLORS = {
+      space: "#00d4ff",
+      spectral: "#00d4ff",
+      tone: "#2ecc71",
+      motion: "#9b59b6",
+      flutter: "#9b59b6",
+      duck: "#e67e22",
+      output: "#d4c8e0",
+      "mutation-output": "#888888",
+    };
+
+    // ─── TIMER STATE ─────────────────────────────────────────────────────────────
+    let timerRunning = false;
+
+    // ─── KNOB RENDERING ──────────────────────────────────────────────────────────
+    const DPR = window.devicePixelRatio || 1;
+    let isDragging = false;
+    let tooltipsEnabled = false;
+    const KNOB_SIZE = 56;
+    const ARC_RADIUS = 24;
+    const ARC_START = 135;   // degrees
+    const ARC_END = 405;   // 135 + 270
+
+    function degToRad(d) { return d * Math.PI / 180; }
+
+    // Helper: scale a hex color's brightness by a factor (0=black, 1=original)
+    function scaleColor(hex, factor) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      const sr = Math.min(255, Math.round(r * factor));
+      const sg = Math.min(255, Math.round(g * factor));
+      const sb = Math.min(255, Math.round(b * factor));
+      return `rgb(${sr},${sg},${sb})`;
+    }
+
+    function drawKnob(canvas, normValue, accentColor, locked) {
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      const cx = KNOB_SIZE / 2;
+      const cy = KNOB_SIZE / 2;
+      const r = ARC_RADIUS;
+
+      // Intensity factor: 0% value → subdued (0.6), 100% → overbright (1.15)
+      const intensity = 0.6 + normValue * 0.55;
+      const dimColor = scaleColor(accentColor, intensity);
+
+      ctx.clearRect(0, 0, KNOB_SIZE, KNOB_SIZE);
+
+      {
+        const startRad = degToRad(ARC_START);
+        const endRad = degToRad(ARC_END);
+
+        // Arc track (dim)
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, startRad, endRad);
+        ctx.strokeStyle = "#2a2a2a";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+        ctx.stroke();
+
+        // Arc fill — crisp, no bleed
+        if (normValue > 0.001) {
+          const fillEnd = degToRad(ARC_START + normValue * 270);
+
+          // Gradient arc: dark at start → bright at end
+          // Many small segments for smooth color transition
+          const totalAngle = normValue * 270;
+          const segments = Math.max(2, Math.round(totalAngle));
+          const darkEnd = 0.25;
+          const brightEnd = Math.min(1.3, intensity + 0.4);
+          for (let i = 0; i < segments; i++) {
+            const t = i / segments;
+            const tNext = (i + 1) / segments;
+            const segStart = degToRad(ARC_START + t * totalAngle);
+            const segEnd = degToRad(ARC_START + tNext * totalAngle);
+            const segBright = darkEnd + t * (brightEnd - darkEnd);
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, segStart, segEnd + 0.015);
+            ctx.strokeStyle = scaleColor(accentColor, segBright);
+            ctx.lineWidth = 3;
+            ctx.lineCap = "butt";
+            ctx.stroke();
+          }
+          // Round caps at start and end
+          const capStartAngle = degToRad(ARC_START);
+          ctx.beginPath();
+          ctx.arc(cx + r * Math.cos(capStartAngle), cy + r * Math.sin(capStartAngle), 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = scaleColor(accentColor, darkEnd);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(cx + r * Math.cos(fillEnd), cy + r * Math.sin(fillEnd), 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = scaleColor(accentColor, brightEnd);
+          ctx.fill();
+        }
+      }
+
+      // Value dot removed — arc endpoint is sufficient
+
+      // At high values, add a subtle radial glow behind the knob face
+      if (!locked && normValue > 0.3) {
+        const glowIntensity = (normValue - 0.3) / 0.7; // 0..1
+        const glowGrad = ctx.createRadialGradient(cx, cy, 8, cx, cy, r);
+        glowGrad.addColorStop(0, dimColor.replace("rgb", "rgba").replace(")", `,${glowIntensity * 0.15})`));
+        glowGrad.addColorStop(1, dimColor.replace("rgb", "rgba").replace(")", ",0)"));
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = glowGrad;
+        ctx.fill();
+      }
+    }
+
+    // ─── KNOB VALUE FORMATTING ────────────────────────────────────────────────────
+    function formatKnobValue(paramId, normValue) {
+      const p = KNOB_PARAMS[paramId];
+      const v = p.min + normValue * (p.max - p.min);
+
+      // Bipolar pre-delay: left=BPM sync divisions, right=free time in ms
+      if (p.unit === "bipolar-pd") {
+        if (v >= 0) return Math.round(v) + "ms";
+        const t = -v / 500; // 0..1
+        if (t > 0.9) return "1/1";
+        else if (t > 0.8) return "1/2";
+        else if (t > 0.7) return "1/4d";
+        else if (t > 0.6) return "1/4";
+        else if (t > 0.5) return "1/8d";
+        else if (t > 0.4) return "1/8";
+        else if (t > 0.3) return "1/16d";
+        else if (t > 0.2) return "1/16";
+        else if (t > 0.1) return "1/32";
+        return "0ms";
+      }
+
+      if (p.unit === "s") return v.toFixed(1) + "s";
+      if (p.unit === "ms") return Math.round(v) + "ms";
+      if (p.unit === "Hz") {
+        if (v >= 1000) return (v / 1000).toFixed(1) + "kHz";
+        if (v < 1) return v.toFixed(2) + "Hz";
+        return Math.round(v) + "Hz";
+      }
+      if (p.unit === "%") return Math.round(v) + "%";
+      if (p.unit === "dB-level") {
+        // Piecewise: norm 0..0.5 → -12..0 dB, norm 0.5..1 → 0..+24 dB
+        let dB;
+        if (normValue <= 0.5)
+          dB = -12 + (normValue / 0.5) * 12;
+        else
+          dB = ((normValue - 0.5) / 0.5) * 24;
+        const rounded = Math.round(dB * 10) / 10;
+        if (rounded > 0) return "+" + rounded.toFixed(1) + "dB";
+        return rounded.toFixed(1) + "dB";
+      }
+      if (p.unit === "dB") {
+        const rounded = Math.round(v * 10) / 10;
+        if (rounded > 0) return "+" + rounded.toFixed(1) + "dB";
+        return rounded.toFixed(1) + "dB";
+      }
+      // Unipolar percentage: display normalized value as 0–100%
+      if (p.unit === "uni-pct") {
+        return Math.round(normValue * 100) + "%";
+      }
+      // For bipolar (spectralTilt) or unitless
+      const rounded = Math.round(v);
+      return rounded > 0 ? "+" + rounded : String(rounded);
+    }
+
+    // ─── KNOB COMPONENT FACTORY ───────────────────────────────────────────────────
+    function buildKnob(containerId, paramId) {
+      const p = KNOB_PARAMS[paramId];
+      const accentColor = SECTION_COLORS[p.section] || "#888888";
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const wrap = document.createElement("div");
+      wrap.className = "knob-wrap";
+      wrap.setAttribute("data-param", paramId);
+
+      const bodyEl = document.createElement("div");
+      bodyEl.className = "knob-body";
+      bodyEl.id = "knobBody_" + paramId;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = KNOB_SIZE * DPR;
+      canvas.height = KNOB_SIZE * DPR;
+      canvas.style.cssText = "position:absolute;top:0;left:0;width:56px;height:56px;";
+      bodyEl.appendChild(canvas);
+
+      const face = document.createElement("div");
+      face.className = "knob-face";
+
+      const indicator = document.createElement("div");
+      indicator.className = "knob-indicator";
+      indicator.id = "knobInd_" + paramId;
+      indicator.style.background = accentColor;
+      face.appendChild(indicator);
+      bodyEl.appendChild(face);
+
+      const labelEl = document.createElement("div");
+      labelEl.className = "knob-label";
+      labelEl.textContent = p.label;
+
+      const valueEl = document.createElement("div");
+      valueEl.className = "knob-value";
+      valueEl.id = "knobVal_" + paramId;
+
+      // Tooltip element — fixed position, no layout impact
+      if (p.tip) {
+        const tipEl = document.createElement("div");
+        tipEl.className = "knob-tooltip";
+        tipEl.textContent = p.tip;
+        document.body.appendChild(tipEl);
+
+        wrap.addEventListener("mouseenter", () => {
+          if (isDragging || !tooltipsEnabled) return;
+          const rect = wrap.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          tipEl.style.left = centerX + "px";
+          tipEl.style.top = (rect.top - 8 * currentScale) + "px";
+          tipEl.style.transform = `translate(-50%, -100%)`;
+          tipEl.classList.add("visible");
+          requestAnimationFrame(() => {
+            const tipRect = tipEl.getBoundingClientRect();
+            if (tipRect.left < 4) {
+              tipEl.style.left = (centerX + (4 - tipRect.left)) + "px";
+            }
+            if (tipRect.right > window.innerWidth - 4) {
+              tipEl.style.left = (centerX - (tipRect.right - window.innerWidth + 4)) + "px";
+            }
+          });
+        });
+        wrap.addEventListener("mouseleave", () => {
+          tipEl.classList.remove("visible");
+        });
+      }
+
+      wrap.appendChild(bodyEl);
+      wrap.appendChild(labelEl);
+      wrap.appendChild(valueEl);
+      container.appendChild(wrap);
+
+      // Refresh from JUCE state
+      function refresh() {
+        const norm = p.state.getNormalisedValue();
+        const locked = p.lockState ? p.lockState.getValue() : false;
+        const canvas = bodyEl.querySelector("canvas");
+
+        drawKnob(canvas, norm, accentColor, locked);
+
+        const rot = -135 + norm * 270;
+        indicator.style.transform = `rotate(${rot}deg)`;
+
+        // Indicator color scales with value intensity
+        const intensity = 0.6 + norm * 0.55;
+        indicator.style.background = scaleColor(accentColor, intensity);
+        indicator.style.opacity = locked ? "0.5" : "1";
+
+        // Knob face styling depends on lock state
+        if (locked) {
+          // Pressed-down effect: inset shadow, slight scale-down, darker face
+          face.style.background = "radial-gradient(circle at 40% 35%, #2a2a2a 0%, #1a1a1a 50%, #121212 100%)";
+          face.style.borderColor = accentColor;
+          face.style.boxShadow = `inset 0 2px 6px rgba(0,0,0,0.7), inset 0 0 3px rgba(0,0,0,0.4), 0 0 8px ${accentColor}40`;
+          face.style.transform = "scale(0.94)";
+        } else {
+          face.style.background = "radial-gradient(circle at 40% 35%, #5a5a5a 0%, #404040 50%, #2e2e2e 100%)";
+          face.style.transform = "scale(1)";
+          face.style.borderColor = "#606060";
+          face.style.boxShadow = "0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06)";
+        }
+
+        if (locked) bodyEl.classList.add("locked");
+        else bodyEl.classList.remove("locked");
+
+        valueEl.textContent = formatKnobValue(paramId, norm);
+        valueEl.style.color = locked ? accentColor + "cc" : "#666666";
+      }
+
+      // JUCE value change listeners (Pattern 15: no callback params)
+      p.state.valueChangedEvent.addListener(() => refresh());
+      if (p.lockState) p.lockState.valueChangedEvent.addListener(() => refresh());
+
+      // Initial render
+      refresh();
+
+      // Drag interaction (Pattern 16: relative drag)
+      let lastY = null;
+      let currentNorm = () => p.state.getNormalisedValue();
+
+      wrap.addEventListener("mousedown", (e) => {
+        // Cmd+click or Ctrl+click: reset to default
+        if (e.metaKey || e.ctrlKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          p.state.setNormalisedValue(p.defaultNorm);
+          return;
+        }
+
+        e.preventDefault();
+        lastY = e.clientY;
+        isDragging = true;
+        document.querySelectorAll(".knob-tooltip.visible").forEach(t => t.classList.remove("visible"));
+        document.body.style.cursor = "ns-resize";
+
+        const onMove = (me) => {
+          const deltaY = lastY - me.clientY;
+          lastY = me.clientY;
+          const sensitivity = 0.005; // normalized per pixel
+          const newNorm = Math.max(0, Math.min(1, currentNorm() + deltaY * sensitivity));
+          p.state.setNormalisedValue(newNorm);
+        };
+
+        const onUp = () => {
+          isDragging = false;
+          document.body.style.cursor = "default";
+          lastY = null;
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+        };
+
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
+
+      // Scroll wheel: adjust value
+      wrap.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const step = 0.01; // normalized per scroll tick
+        const direction = e.deltaY < 0 ? 1 : -1;
+        const newNorm = Math.max(0, Math.min(1, currentNorm() + direction * step));
+        p.state.setNormalisedValue(newNorm);
+      }, { passive: false });
+
+      // Double-click: reset to default value
+      wrap.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        p.state.setNormalisedValue(p.defaultNorm);
+      });
+
+      // Right-click: toggle lock (only for lockable params)
+      if (p.lockState) {
+        wrap.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          p.lockState.setValue(!p.lockState.getValue());
+          return false;
+        });
+      }
+    }
+
+    // ─── HORIZONTAL SLIDER FACTORY ────────────────────────────────────────────────
+    function buildHSlider(containerId, paramId) {
+      const p = HSLIDER_PARAMS[paramId];
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const wrap = document.createElement("div");
+      wrap.className = "hslider-wrap";
+
+      const header = document.createElement("div");
+      header.className = "hslider-header";
+
+      const labelEl = document.createElement("span");
+      labelEl.className = "hslider-label";
+      labelEl.textContent = p.label;
+
+      const valEl = document.createElement("span");
+      valEl.className = "hslider-value";
+      valEl.id = "hsliderVal_" + paramId;
+
+      header.appendChild(labelEl);
+      header.appendChild(valEl);
+
+      const track = document.createElement("div");
+      track.className = "hslider-track";
+      track.id = "hsliderTrack_" + paramId;
+
+      const fill = document.createElement("div");
+      fill.className = "hslider-fill";
+      fill.id = "hsliderFill_" + paramId;
+
+      const thumb = document.createElement("div");
+      thumb.className = "hslider-thumb";
+      thumb.id = "hsliderThumb_" + paramId;
+
+      track.appendChild(fill);
+      track.appendChild(thumb);
+
+      // Bipolar center line indicator
+      if (p.bipolar) {
+        const centerLine = document.createElement("div");
+        centerLine.style.cssText = "position:absolute;left:50%;top:0;width:1px;height:100%;background:#333333;transform:translateX(-0.5px);pointer-events:none;z-index:1;";
+        track.appendChild(centerLine);
+      }
+
+      wrap.appendChild(header);
+      wrap.appendChild(track);
+      container.appendChild(wrap);
+
+      // Tooltip for horizontal sliders
+      if (p.tip) {
+        const tipEl = document.createElement("div");
+        tipEl.className = "knob-tooltip";
+        tipEl.textContent = p.tip;
+        document.body.appendChild(tipEl);
+
+        wrap.addEventListener("mouseenter", () => {
+          if (!tooltipsEnabled) return;
+          const rect = wrap.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          tipEl.style.left = centerX + "px";
+          tipEl.style.top = (rect.top - 8 * currentScale) + "px";
+          tipEl.style.transform = `translate(-50%, -100%)`;
+          tipEl.classList.add("visible");
+          requestAnimationFrame(() => {
+            const tipRect = tipEl.getBoundingClientRect();
+            if (tipRect.left < 4) {
+              tipEl.style.left = (centerX + (4 - tipRect.left)) + "px";
+            }
+            if (tipRect.right > window.innerWidth - 4) {
+              tipEl.style.left = (centerX - (tipRect.right - window.innerWidth + 4)) + "px";
+            }
+          });
+        });
+        wrap.addEventListener("mouseleave", () => {
+          tipEl.classList.remove("visible");
+        });
+      }
+
+      function refresh() {
+        const norm = p.state.getNormalisedValue();
+        const trackW = track.offsetWidth || 140;
+
+        if (p.bipolar) {
+          // Bipolar: fill from center (norm=0.5) outward in either direction
+          const center = 0.5;
+          if (norm >= center) {
+            // Right of center: fill from 50% rightward
+            fill.style.left = (center * 100) + "%";
+            fill.style.width = ((norm - center) * 100) + "%";
+            fill.style.borderRadius = "0 13px 13px 0";
+          } else {
+            // Left of center: fill from norm leftward to 50%
+            fill.style.left = (norm * 100) + "%";
+            fill.style.width = ((center - norm) * 100) + "%";
+            fill.style.borderRadius = "13px 0 0 13px";
+          }
+        } else {
+          fill.style.left = "0";
+          fill.style.width = (norm * 100) + "%";
+        }
+
+        // Dynamic brightness: fill glows toward accent color when farther from center
+        const dist = p.bipolar ? Math.abs(norm - 0.5) * 2 : norm;
+        const accent = p.accentColor || "#00d4ff";
+        const ar = parseInt(accent.slice(1, 3), 16);
+        const ag = parseInt(accent.slice(3, 5), 16);
+        const ab = parseInt(accent.slice(5, 7), 16);
+        const br = Math.round(58 + dist * (ar - 58));
+        const bg = Math.round(58 + dist * (ag - 58));
+        const bb = Math.round(58 + dist * (ab - 58));
+        fill.style.background = `linear-gradient(90deg, #2a2a2a, rgb(${br},${bg},${bb}))`;
+
+        thumb.style.left = (norm * trackW) + "px";
+        valEl.textContent = p.formatFn(norm);
+      }
+
+      p.state.valueChangedEvent.addListener(() => refresh());
+      refresh();
+
+      // Scroll wheel: adjust value
+      wrap.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const step = 0.01;
+        const direction = e.deltaY < 0 ? 1 : -1;
+        const norm = p.state.getNormalisedValue();
+        const newNorm = Math.max(0, Math.min(1, norm + direction * step));
+        p.state.setNormalisedValue(newNorm);
+      }, { passive: false });
+
+      // Drag
+      let startX = null;
+      let startNorm = null;
+
+      track.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        startX = e.clientX;
+        startNorm = p.state.getNormalisedValue();
+        document.body.style.cursor = "ew-resize";
+
+        const onMove = (me) => {
+          const trackW = track.offsetWidth || 140;
+          const delta = (me.clientX - startX) / trackW;
+          const newNorm = Math.max(0, Math.min(1, startNorm + delta));
+          p.state.setNormalisedValue(newNorm);
+        };
+
+        const onUp = () => {
+          document.body.style.cursor = "default";
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+        };
+
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
+    }
+
+    // ─── COUNTDOWN DISPLAY (synced from C++ via native function) ─────────────────
+    const countdownEl = document.getElementById("countdown");
+    const timerToggleBtn = document.getElementById("timerToggle");
+
+    let lastKnownRunning = null;
+
+    function updateCountdownDisplay(remainingMs, running, intervalMs) {
+      timerRunning = running;
+
+      // Only update button DOM when state actually changes
+      // (avoids destroying/recreating text node every 66ms poll cycle,
+      // which breaks click events in JUCE WebView)
+      if (lastKnownRunning !== running) {
+        lastKnownRunning = running;
+        if (running) {
+          timerToggleBtn.textContent = "STOP";
+          timerToggleBtn.classList.remove("is-stopped");
+        } else {
+          timerToggleBtn.textContent = "START";
+          timerToggleBtn.classList.add("is-stopped");
+        }
+      }
+
+      // Format time — use sub-second display for fast intervals
+      let timeStr;
+      let totalSecs = 0;
+      if (remainingMs < 1000) {
+        // Sub-second: show milliseconds
+        const ms = Math.max(0, Math.ceil(remainingMs));
+        timeStr = ms + "ms";
+      } else {
+        totalSecs = Math.max(0, Math.ceil(remainingMs / 1000));
+        const m = Math.floor(totalSecs / 60);
+        const s = totalSecs % 60;
+        timeStr = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+      }
+
+      // -2 sentinel = armed, waiting for DAW transport
+      if (running && remainingMs === -2) {
+        countdownEl.classList.remove("stopped", "warning");
+        countdownEl.textContent = "WAIT";
+        return;
+      }
+
+      if (!running || remainingMs < 0) {
+        countdownEl.classList.add("stopped");
+        countdownEl.classList.remove("warning");
+        if (remainingMs > 0) {
+          countdownEl.textContent = timeStr;
+        } else {
+          countdownEl.textContent = "--:--";
+        }
+        return;
+      }
+
+      countdownEl.classList.remove("stopped");
+      countdownEl.textContent = timeStr;
+
+      if (totalSecs <= 5 && totalSecs > 0) {
+        countdownEl.classList.add("warning");
+      } else if (remainingMs < 1000) {
+        countdownEl.classList.add("warning");
+      } else {
+        countdownEl.classList.remove("warning");
+      }
+    }
+
+    // Poll C++ mutation state at ~15Hz (enough for smooth countdown)
+    function pollMutationState() {
+      getMutationStateFn().then(state => {
+        if (state && typeof state === "object") {
+          updateCountdownDisplay(state.remainingMs, state.running, state.intervalMs);
+        }
+      }).catch(() => { });
+      setTimeout(pollMutationState, 66);
+    }
+
+    // ─── MUTATE NOW BUTTON ────────────────────────────────────────────────────────
+    document.getElementById("mutateBtn").addEventListener("click", () => {
+      const btn = document.getElementById("mutateBtn");
+      btn.classList.add("firing");
+      setTimeout(() => btn.classList.remove("firing"), 350);
+
+      // Flash overlay
+      const flash = document.getElementById("mutationFlash");
+      flash.classList.remove("active");
+      void flash.offsetWidth;
+      flash.classList.add("active");
+
+      // Call C++ triggerMutation() via native function
+      mutateNowFn().catch(() => { });
+    });
+
+    // ─── DEFAULT BUTTON ─────────────────────────────────────────────────────────
+    // Plain click → reset all params to defaults (user-saved if present, else factory).
+    // Cmd (Mac) / Ctrl (Win) held → button label flips to "SAVE AS DEFAULT".
+    //   Click while modifier held → snapshot current param state as user defaults.
+    const defaultBtn = document.getElementById("defaultBtn");
+    const defaultLabelOriginal = defaultBtn.textContent;
+
+    function isModifierEvent(e) {
+      // Cmd on macOS, Ctrl on Windows/Linux
+      return e.metaKey || e.ctrlKey;
+    }
+
+    function updateDefaultBtnLabel(modHeld) {
+      defaultBtn.textContent = modHeld ? "Save as Default" : defaultLabelOriginal;
+    }
+
+    // Track modifier state globally so label updates as user holds/releases
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Meta" || e.key === "Control") updateDefaultBtnLabel(true);
+    });
+    document.addEventListener("keyup", (e) => {
+      if (e.key === "Meta" || e.key === "Control") updateDefaultBtnLabel(false);
+    });
+    // Hover-aware fallback (in case keydown was fired before hover)
+    defaultBtn.addEventListener("mouseenter", (e) => updateDefaultBtnLabel(isModifierEvent(e)));
+    defaultBtn.addEventListener("mouseleave", () => updateDefaultBtnLabel(false));
+
+    defaultBtn.addEventListener("click", async (e) => {
+      if (isModifierEvent(e)) {
+        // SAVE current param state as user defaults
+        try {
+          await saveCurrentAsDefaultsFn();
+          const orig = defaultBtn.textContent;
+          defaultBtn.textContent = "✓ Saved";
+          defaultBtn.style.color = "#6bff8e";
+          setTimeout(() => {
+            defaultBtn.textContent = orig;
+            defaultBtn.style.color = "";
+          }, 900);
+        } catch (_) {
+          defaultBtn.textContent = "Failed";
+          setTimeout(() => updateDefaultBtnLabel(isModifierEvent(e)), 900);
+        }
+      } else {
+        // Plain click → reset to defaults (user-saved if any, else factory)
+        resetToDefaultsFn().catch(() => { });
+      }
+    });
+
+    // ─── TIMER STOP/START BUTTON ─────────────────────────────────────────────────
+    // Use mousedown instead of click — more reliable in JUCE WebView
+    // (click requires mousedown+mouseup on same target, which can fail
+    // if the DOM is being updated between the two events)
+    document.getElementById("timerToggle").addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      lastKnownRunning = null; // force UI refresh on next poll
+      toggleMutationTimerFn().catch(() => { });
+    });
+
+    // ─── FLUTTER TOGGLE BUTTON ──────────────────────────────────────────────────
+    const flutterToggleBtn = document.getElementById("flutterToggle");
+
+    function updateFlutterToggle() {
+      const enabled = wowFlutterEnabledState.getValue();
+      flutterToggleBtn.textContent = enabled ? "ON" : "OFF";
+      if (enabled) flutterToggleBtn.classList.add("active");
+      else flutterToggleBtn.classList.remove("active");
+    }
+
+    wowFlutterEnabledState.valueChangedEvent.addListener(updateFlutterToggle);
+    updateFlutterToggle();
+
+    flutterToggleBtn.addEventListener("click", () => {
+      wowFlutterEnabledState.setValue(!wowFlutterEnabledState.getValue());
+    });
+
+    // ─── INTERVAL MODE TOGGLE (SYNC/MS) ───────────────────────────────────────
+    const intervalModeBtn = document.getElementById("intervalModeToggle");
+
+    function updateIntervalModeUI() {
+      intervalModeMs = intervalModeState.getNormalisedValue() > 0.5;
+      intervalModeBtn.textContent = intervalModeMs ? "MS" : "SYNC";
+      if (intervalModeMs) intervalModeBtn.classList.add("is-ms");
+      else intervalModeBtn.classList.remove("is-ms");
+      // Refresh the fader label to reflect current mode
+      const wrap = document.getElementById("hslider_mutationInterval");
+      if (wrap) {
+        const valEl = wrap.querySelector(".hslider-value");
+        if (valEl) {
+          const p = HSLIDER_PARAMS.mutationInterval;
+          valEl.textContent = p.formatFn(p.state.getNormalisedValue());
+        }
+      }
+    }
+
+    intervalModeState.valueChangedEvent.addListener(updateIntervalModeUI);
+    updateIntervalModeUI();
+
+    intervalModeBtn.addEventListener("click", () => {
+      const newVal = intervalModeMs ? 0 : 1;
+      intervalModeState.setNormalisedValue(newVal);
+    });
+
+    // ─── CROSSFADE MODE TOGGLE (SYNC/MS) ──────────────────────────────────────
+    const crossfadeModeBtn = document.getElementById("crossfadeModeToggle");
+
+    function updateCrossfadeModeUI() {
+      crossfadeModeMs = crossfadeModeState.getNormalisedValue() > 0.5;
+      crossfadeModeBtn.textContent = crossfadeModeMs ? "MS" : "SYNC";
+      if (crossfadeModeMs) crossfadeModeBtn.classList.add("is-ms");
+      else crossfadeModeBtn.classList.remove("is-ms");
+      // Refresh the fader label to reflect current mode
+      const wrap = document.getElementById("hslider_crossfadeSpeed");
+      if (wrap) {
+        const valEl = wrap.querySelector(".hslider-value");
+        if (valEl) {
+          const p = HSLIDER_PARAMS.crossfadeSpeed;
+          valEl.textContent = p.formatFn(p.state.getNormalisedValue());
+        }
+      }
+    }
+
+    crossfadeModeState.valueChangedEvent.addListener(updateCrossfadeModeUI);
+    updateCrossfadeModeUI();
+
+    crossfadeModeBtn.addEventListener("click", () => {
+      const newVal = crossfadeModeMs ? 0 : 1;
+      crossfadeModeState.setNormalisedValue(newVal);
+    });
+
+    // ─── BYPASS BUTTON ──────────────────────────────────────────────────────────
+    const bypassBtn = document.getElementById("bypassBtn");
+    const bypassDim = document.getElementById("bypassDim");
+
+    function updateBypassBtn() {
+      const bypassed = bypassState.getValue();
+      if (bypassed) {
+        bypassBtn.classList.add("active");
+        bypassDim.classList.add("active");
+      } else {
+        bypassBtn.classList.remove("active");
+        bypassDim.classList.remove("active");
+      }
+    }
+
+    bypassState.valueChangedEvent.addListener(updateBypassBtn);
+    updateBypassBtn();
+
+    bypassBtn.addEventListener("click", () => {
+      bypassState.setValue(!bypassState.getValue());
+    });
+
+    // ─── SETTINGS PANEL ──────────────────────────────────────────────────────────
+    // Persisted via localStorage (key: "chaosverbSettings"). Loaded on init,
+    // applied + saved on user interaction. "Save as Default" makes current
+    // values the cold-start defaults for next plugin load.
+    const SETTINGS_KEY = "chaosverbSettings";
+    const DEFAULT_SETTINGS = {
+      tooltips: false,
+      windowW:  900,
+      windowH:  400,
+      brightness: 1.0,
+    };
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (!raw) return { ...DEFAULT_SETTINGS };
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      } catch (_) {
+        return { ...DEFAULT_SETTINGS };
+      }
+    }
+    function saveSettings(obj) {
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj)); } catch (_) {}
+    }
+
+    let settings = loadSettings();
+    let liveSettings = { ...settings }; // mutated by user interactions in popover
+
+    const settingsBtn       = document.getElementById("settingsBtn");
+    const settingsPopover   = document.getElementById("settingsPopover");
+    const settingsTipToggle = document.getElementById("settingsTooltipToggle");
+    const brightnessUp      = document.getElementById("brightnessUp");
+    const brightnessDown    = document.getElementById("brightnessDown");
+    const brightnessValue   = document.getElementById("brightnessValue");
+    const settingsSaveBtn   = document.getElementById("settingsSaveBtn");
+    const presetBtns        = document.querySelectorAll(".settings-preset-btn");
+
+    function applyBrightness(v) {
+      const shell = document.getElementById("pluginShell");
+      // Combine with existing CSS zoom — use filter on the shell.
+      shell.style.filter = `brightness(${v})`;
+    }
+
+    function refreshSettingsUI() {
+      // Tooltip toggle visual
+      settingsTipToggle.classList.toggle("on", liveSettings.tooltips);
+      tooltipsEnabled = liveSettings.tooltips;
+      if (!tooltipsEnabled) {
+        document.querySelectorAll(".knob-tooltip.visible").forEach(t => t.classList.remove("visible"));
+      }
+      // Brightness label
+      brightnessValue.textContent = Math.round(liveSettings.brightness * 100) + "%";
+      applyBrightness(liveSettings.brightness);
+      // Window size preset highlight
+      presetBtns.forEach(b => {
+        const w = parseInt(b.dataset.w, 10);
+        const h = parseInt(b.dataset.h, 10);
+        b.classList.toggle("active",
+          w === liveSettings.windowW && h === liveSettings.windowH);
+      });
+    }
+
+    // Apply on initial load
+    refreshSettingsUI();
+    // Apply saved window size if different from current. setEditorSize is
+    // async — JUCE editor will resize, then updateScale fires via resize event.
+    if (settings.windowW && settings.windowH) {
+      setEditorSizeFn(settings.windowW, settings.windowH).catch(() => {});
+    }
+
+    // Toggle popover open/close
+    function toggleSettings() {
+      const isOpen = settingsPopover.classList.toggle("visible");
+      settingsBtn.classList.toggle("open", isOpen);
+    }
+    settingsBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSettings();
+    });
+    // Click outside → close
+    document.addEventListener("click", (e) => {
+      if (!settingsPopover.contains(e.target) && e.target !== settingsBtn) {
+        settingsPopover.classList.remove("visible");
+        settingsBtn.classList.remove("open");
+      }
+    });
+
+    // Tooltip toggle inside popover
+    settingsTipToggle.addEventListener("click", () => {
+      liveSettings.tooltips = !liveSettings.tooltips;
+      refreshSettingsUI();
+    });
+
+    // Window size presets
+    presetBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const w = parseInt(btn.dataset.w, 10);
+        const h = parseInt(btn.dataset.h, 10);
+        liveSettings.windowW = w;
+        liveSettings.windowH = h;
+        setEditorSizeFn(w, h).catch(() => {});
+        refreshSettingsUI();
+      });
+    });
+
+    // Brightness +/-
+    brightnessUp.addEventListener("click", () => {
+      liveSettings.brightness = Math.min(1.5, +(liveSettings.brightness + 0.1).toFixed(1));
+      refreshSettingsUI();
+    });
+    brightnessDown.addEventListener("click", () => {
+      liveSettings.brightness = Math.max(0.5, +(liveSettings.brightness - 0.1).toFixed(1));
+      refreshSettingsUI();
+    });
+
+    // Save as Default → persist current liveSettings as cold-start defaults
+    settingsSaveBtn.addEventListener("click", () => {
+      settings = { ...liveSettings };
+      saveSettings(settings);
+      const original = settingsSaveBtn.textContent;
+      settingsSaveBtn.textContent = "✓ Saved";
+      settingsSaveBtn.classList.add("saved");
+      setTimeout(() => {
+        settingsSaveBtn.textContent = original;
+        settingsSaveBtn.classList.remove("saved");
+      }, 1200);
+    });
+
+    // ─── RESIZABLE GUI (CSS zoom for sharp HiDPI) ─────────────────────────────
+    const DESIGN_W = 900;
+    const DESIGN_H = 400;
+
+    let currentScale = 1;
+
+    function updateScale() {
+      // Reset zoom to 1 so innerWidth/innerHeight report true viewport size
+      const shell = document.getElementById("pluginShell");
+      shell.style.zoom = "1";
+      const scaleX = window.innerWidth / DESIGN_W;
+      const scaleY = window.innerHeight / DESIGN_H;
+      currentScale = Math.min(scaleX, scaleY);
+      // CSS zoom re-rasterizes at target size → sharp on Retina/HiDPI.
+      // transform:scale stretches the already-rasterized bitmap → blurry.
+      shell.style.zoom = currentScale;
+      // Tooltips live outside the shell (on body), so scale them via CSS var
+      document.documentElement.style.setProperty('--ui-scale', currentScale);
+    }
+
+    window.addEventListener("resize", updateScale);
+
+    // ─── INITIALISE ──────────────────────────────────────────────────────────────
+    function init() {
+      // SPACE
+      buildKnob("knob_decay", "decay");
+      buildKnob("knob_preDelay", "preDelay");
+      buildKnob("knob_density", "density");
+
+      // SPECTRAL
+      buildKnob("knob_gravity", "gravity");
+      buildKnob("knob_spectralTilt", "spectralTilt");
+      buildKnob("knob_saturation", "saturation");
+
+      // TONE
+      buildKnob("knob_lowCut", "lowCut");
+      buildKnob("knob_tilt", "tilt");
+      buildKnob("knob_highCut", "highCut");
+
+      // MOTION
+      buildKnob("knob_modRate", "modRate");
+      buildKnob("knob_flutterSpeed", "flutterSpeed");
+
+      // FLUTTER
+      buildKnob("knob_wowFlutterAmount", "wowFlutterAmount");
+
+      // DUCK
+      buildKnob("knob_duckingAmount", "duckingAmount");
+      buildKnob("knob_duckAttack", "duckAttack");
+      buildKnob("knob_duckRelease", "duckRelease");
+
+      // MUTATION
+      buildHSlider("hslider_mutationInterval", "mutationInterval");
+      buildHSlider("hslider_crossfadeSpeed", "crossfadeSpeed");
+      buildHSlider("hslider_mutationAmount", "mutationAmount");
+
+      // OUTPUT
+      buildKnob("knob_width", "width");
+      buildKnob("knob_mix", "mix");
+      buildKnob("knob_outputLevel", "outputLevel");
+
+      // Start polling C++ mutation state for countdown display
+      pollMutationState();
+
+      // ─── SECTION TITLE GROUP-LOCK ──────────────────────────────────────────
+      // Click any section title to lock/unlock all params in that section.
+      // If any param is unlocked, click locks the whole group. If all locked,
+      // click unlocks. Visual: title brightens + dot indicator when all locked.
+      const SECTION_PARAMS = {
+        space:    ["decay", "preDelay", "density"],
+        spectral: ["gravity", "spectralTilt", "saturation"],
+        tone:     ["lowCut", "tilt", "highCut"],
+        motion:   ["modRate", "flutterSpeed", "wowFlutterAmount"],
+        duck:     ["duckingAmount", "duckAttack", "duckRelease"],
+        output:   ["width", "mix", "outputLevel"],
+      };
+
+      document.querySelectorAll(".section-label[data-section]").forEach(label => {
+        const sectionName = label.dataset.section;
+        const paramIds = SECTION_PARAMS[sectionName];
+        if (!paramIds) return;
+
+        const lockStates = paramIds
+          .map(id => KNOB_PARAMS[id] && KNOB_PARAMS[id].lockState)
+          .filter(s => s != null);
+        if (lockStates.length === 0) return;
+
+        const refresh = () => {
+          const allLocked = lockStates.every(s => s.getValue());
+          label.classList.toggle("locked", allLocked);
+        };
+
+        label.addEventListener("click", () => {
+          const allLocked = lockStates.every(s => s.getValue());
+          const newVal = !allLocked;
+          lockStates.forEach(s => s.setValue(newVal));
+        });
+
+        lockStates.forEach(s => s.valueChangedEvent.addListener(refresh));
+        refresh();
+      });
+
+      // ─── LICENSE ENGINE ────────────────────────────────────────────────────
+      // States: licensed | trial_active | trial_expired | unlicensed
+      const overlay     = document.getElementById("licenseOverlay");
+      const closeBtn    = document.getElementById("licenseClose");
+      const titleEl     = document.getElementById("licenseTitle");
+      const subtitleEl  = document.getElementById("licenseSubtitle");
+      const keyInput    = document.getElementById("licenseKeyInput");
+      const activateBtn = document.getElementById("activateBtn");
+      const trialBtn    = document.getElementById("trialBtn");
+      const trialDiv    = document.getElementById("trialDivider");
+      const deactBtn    = document.getElementById("deactivateBtn");
+      const deactDiv    = document.getElementById("deactivateDivider");
+      const msgEl       = document.getElementById("licenseMsg");
+      const trialChip   = document.getElementById("trialChip");
+
+      // Track previous state so refresh only acts on TRANSITIONS, not every poll.
+      // Without this, periodic refresh would fight user-driven overlay opens.
+      let lastShownState = null;
+      let lastActive     = null;  // null = first refresh
+      let showDeactivate = false; // toggled true only by Chaosverb title click
+
+      function setMsg(text, kind) {
+        msgEl.textContent = text || "";
+        msgEl.className = "license-msg" + (kind ? " " + kind : "");
+      }
+
+      async function refreshLicenseUI() {
+        const status = await getLicenseStatusFn();
+        // status: { state, active, key, trialDaysLeft, trialEverStarted }
+
+        if (status.key) keyInput.value = status.key;
+
+        // Only act on transitions: never auto-toggle overlay during steady-state.
+        const wasActive = lastActive;
+        lastActive = status.active;
+        lastShownState = status.state;
+
+        // Inactive on first load OR active→inactive transition (trial expiry,
+        // license revoked) → force overlay open with no close button.
+        if (!status.active && wasActive !== false) {
+          overlay.classList.add("visible");
+          closeBtn.style.display = "none";
+        }
+        // Inactive→active transition (after successful activate or trial start)
+        // → close overlay automatically.
+        else if (status.active && wasActive === false) {
+          overlay.classList.remove("visible");
+          showDeactivate = false;
+        }
+        // Locked state always means no close button (user must activate).
+        if (!status.active) {
+          closeBtn.style.display = "none";
+        } else {
+          // When active, ensure close button available if overlay shown.
+          if (overlay.classList.contains("visible"))
+            closeBtn.style.display = "block";
+        }
+
+        // Trial chip in header — clickable shortcut to overlay
+        if (status.state === "trial_active") {
+          trialChip.textContent = "TRIAL · " + status.trialDaysLeft + "D";
+          trialChip.classList.add("visible");
+        } else if (status.state === "licensed") {
+          trialChip.classList.remove("visible");
+        } else {
+          trialChip.classList.remove("visible");
+        }
+
+        // Customise overlay copy by state
+        if (status.state === "licensed") {
+          titleEl.textContent = "Chaosverb — Activated";
+          subtitleEl.textContent = "This computer is licensed. You can deactivate to free up the slot for another machine.";
+          trialBtn.style.display = "none";
+          trialDiv.style.display = "none";
+          deactBtn.style.display = showDeactivate ? "block" : "none";
+          deactDiv.style.display = showDeactivate ? "flex"  : "none";
+        } else if (status.state === "trial_expired") {
+          titleEl.textContent = "Trial Expired";
+          subtitleEl.textContent = "Your 7-day trial has ended. Enter a license key to continue.";
+          trialBtn.style.display = "none";
+          trialDiv.style.display = "none";
+          deactBtn.style.display = "none";
+          deactDiv.style.display = "none";
+        } else if (status.trialEverStarted && !status.active) {
+          titleEl.textContent = "Chaosverb — Activation Required";
+          subtitleEl.textContent = "Enter your license key to activate.";
+          trialBtn.style.display = "none";
+          trialDiv.style.display = "none";
+          deactBtn.style.display = "none";
+          deactDiv.style.display = "none";
+        } else if (status.state === "trial_active") {
+          titleEl.textContent = "Activate Chaosverb";
+          subtitleEl.textContent = "Enter your license key to remove the trial limit.";
+          trialBtn.style.display = "none";
+          trialDiv.style.display = "none";
+          deactBtn.style.display = "none";
+          deactDiv.style.display = "none";
+        } else {
+          titleEl.textContent = "Chaosverb — Activation Required";
+          subtitleEl.textContent = "Enter your license key, or try free for 7 days.";
+          trialBtn.style.display = "block";
+          trialDiv.style.display = "flex";
+          deactBtn.style.display = "none";
+          deactDiv.style.display = "none";
+        }
+      }
+
+      activateBtn.addEventListener("click", async () => {
+        const key = keyInput.value.trim();
+        if (!key) { setMsg("Enter a license key.", "error"); return; }
+        activateBtn.disabled = true;
+        setMsg("Verifying...", "");
+        const res = await activateLicenseFn(key);
+        activateBtn.disabled = false;
+        setMsg(res.message, res.success ? "success" : "error");
+        if (res.success) {
+          // Auto-close overlay so user can use plugin immediately.
+          setTimeout(() => {
+            overlay.classList.remove("visible");
+            showDeactivate = false;
+            setMsg("", "");
+            refreshLicenseUI();
+          }, 800);
+        }
+      });
+
+      keyInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") activateBtn.click();
+      });
+
+      trialBtn.addEventListener("click", async () => {
+        trialBtn.disabled = true;
+        const res = await startTrialFn();
+        trialBtn.disabled = false;
+        setMsg(res.message, res.success ? "success" : "error");
+        if (res.success) setTimeout(refreshLicenseUI, 400);
+      });
+
+      // Deactivate license on this machine — frees activation slot on Polar.
+      // Two-click confirm (window.confirm() blocks inside JUCE WebView).
+      let deactArmed = false;
+      let deactArmTimer = null;
+      deactBtn.addEventListener("click", async () => {
+        if (!deactArmed) {
+          deactArmed = true;
+          deactBtn.textContent = "Click again to confirm";
+          setMsg("This frees the activation slot. You can re-activate later with your key.", "");
+          if (deactArmTimer) clearTimeout(deactArmTimer);
+          deactArmTimer = setTimeout(() => {
+            deactArmed = false;
+            deactBtn.textContent = "Deactivate This Computer";
+            setMsg("", "");
+          }, 5000);
+          return;
+        }
+        if (deactArmTimer) { clearTimeout(deactArmTimer); deactArmTimer = null; }
+        deactArmed = false;
+        deactBtn.disabled = true;
+        deactBtn.textContent = "Deactivating...";
+        setMsg("", "");
+        try {
+          const res = await deactivateLicenseFn();
+          if (res && res.success) {
+            setMsg(res.message || "Deactivated.", "success");
+            // Auto-close overlay after successful deactivate.
+            // Suppress refresh's auto-reopen by pre-setting lastActive=false
+            // so the upcoming false→false transition is a no-op.
+            lastActive = false;
+            setTimeout(() => {
+              overlay.classList.remove("visible");
+              showDeactivate = false;
+              setMsg("", "");
+            }, 800);
+          } else {
+            setMsg((res && res.message) || "Deactivation failed.", "error");
+          }
+        } catch (e) {
+          setMsg("Deactivation error: " + e, "error");
+        }
+        deactBtn.disabled = false;
+        deactBtn.textContent = "Deactivate This Computer";
+        setTimeout(refreshLicenseUI, 1500);
+      });
+
+      // "Buy Chaosverb on Gumroad" link → open in system browser via native bridge
+      // (JUCE WebBrowser blocks target="_blank" by default)
+      const buyLink = document.getElementById("buyLink");
+      if (buyLink) {
+        buyLink.addEventListener("click", (e) => {
+          e.preventDefault();
+          openExternalURLFn("https://buy.polar.sh/polar_cl_uSz2Ytiofavyczc7hYX5687ljWevsRuYocdxK3s07V7");
+        });
+      }
+
+      // Trial chip → opens overlay so user can paste license key
+      trialChip.addEventListener("click", () => {
+        
+        showDeactivate = false;
+        overlay.classList.add("visible");
+        closeBtn.style.display = "block";
+        setMsg("", "");
+        keyInput.focus();
+      });
+
+      // Close button → dismiss overlay (only available when license active)
+      closeBtn.addEventListener("click", () => {
+        
+        showDeactivate = false;
+        overlay.classList.remove("visible");
+        setMsg("", "");
+      });
+
+      // Chaosverb title click → opens overlay with deactivate button visible.
+      // Only meaningful when licensed; for other states it just opens overlay.
+      const pluginTitleEl = document.querySelector(".plugin-title");
+      if (pluginTitleEl) {
+        pluginTitleEl.style.cursor = "pointer";
+        pluginTitleEl.title = "License management";
+        pluginTitleEl.addEventListener("click", async () => {
+          showDeactivate = true;
+          
+          overlay.classList.add("visible");
+          closeBtn.style.display = "block";
+          setMsg("", "");
+          await refreshLicenseUI();
+        });
+      }
+
+      // Initial check + periodic refresh (catches trial expiry mid-session)
+      refreshLicenseUI();
+      setInterval(refreshLicenseUI, 60000); // every minute
+
+      // Initial scale for resizable GUI
+      updateScale();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+
+</html>

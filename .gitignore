@@ -1,0 +1,22 @@
+# Build artifacts
+build/
+build-*/
+cmake-build-*/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.xcodeproj/
+*.xcworkspace/
+.DS_Store
+
+# OS
+Thumbs.db
+
+# JUCE
+*.jucer
+
+# Local cache / state
+.continue-here.md
+.planning/
