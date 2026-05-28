@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+*.xcodeproj
+DerivedData/
+__pycache__/
+
+# REW sample data (user-provided); keep the folder + its README
+samples/*
+!samples/README.md
