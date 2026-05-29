@@ -107,4 +107,13 @@ final class AcousticsTests: XCTestCase {
         // Reflection items carry AR locations.
         XCTAssertTrue(report.items.filter { $0.category == .reflection }.allSatisfy { $0.location != nil })
     }
+
+    func testReportFormatterRendersText() {
+        let report = RecommendationEngine.generate(room: room, tags: MaterialTags(uniform: "drywall"))
+        let text = ReportFormatter.plainText(report)
+        XCTAssertTrue(text.contains("STUDIO ACOUSTIC PLAN"))
+        XCTAssertTrue(text.contains("LISTENING SETUP"))
+        XCTAssertTrue(text.contains("ACTIONS"))
+        XCTAssertTrue(text.contains("prediction"))     // not measured
+    }
 }
