@@ -9,8 +9,8 @@ app project and depends on this package.
 
 | Module | Contents |
 |---|---|
-| `Acoustics` | `RoomModes` (standing-wave resonances + pile-ups), `ReverbTime` (Sabine/Eyring RT60 + absorption-to-target), `Reflections` (mirror-image first-reflection points), `SBIR` (speaker-boundary nulls), geometry types |
-| `Measurement` | `REWTextParser` (REW "Export as text" → `FrequencyResponse`), `PeakDetector` (measured peaks/dips vs. smoothed trend), `Reconciliation` (cross-checks predicted modes against the measurement) |
+| `Acoustics` | `RoomModes` (resonances + pile-ups), `ReverbTime` (Sabine/Eyring RT60 + absorption-to-target), `Reflections` (mirror-image first-reflection points), `SBIR` (speaker-boundary nulls), `Placement` (38% rule + equilateral triangle), `RoomSurfaces` (material tags → absorption), `Catalog` (bundled monitor/material/panel data), `RecommendationEngine` (aggregates everything into a prioritised report) |
+| `Measurement` | `REWTextParser` (REW "Export as text" → `FrequencyResponse`), `PeakDetector` (measured peaks/dips vs. smoothed trend), `WAVDecoder` + `ReverbDecay` (impulse-response WAV → Schroeder RT60 per octave band), `Reconciliation` (predicted modes vs. measurement), `MeasuredRefinement` (escalates the report using measured data) |
 
 ## Run the tests
 
@@ -28,6 +28,7 @@ oracles (no Swift required):
 cd acoustic-planner/validation
 python3 oracle.py              # room modes, RT60, reflections, SBIR
 python3 measurement_oracle.py  # peak detection + reconciliation
+python3 dsp_oracle.py          # placement triangle + Schroeder RT60 recovery
 ```
 
 These oracles are the source of truth for the known-answer cases; keep them in

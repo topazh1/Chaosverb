@@ -1,0 +1,8 @@
+[
+  { "id": "broadband_60x120_50mm",  "name": "Broadband panel 60×120, 50mm",   "type": "broadband", "thicknessMm": 50,  "widthMm": 600, "heightMm": 1200, "coverageM2": 0.72 },
+  { "id": "broadband_60x120_100mm", "name": "Broadband panel 60×120, 100mm",  "type": "broadband", "thicknessMm": 100, "widthMm": 600, "heightMm": 1200, "coverageM2": 0.72 },
+  { "id": "broadband_60x60_50mm",   "name": "Broadband panel 60×60, 50mm",    "type": "broadband", "thicknessMm": 50,  "widthMm": 600, "heightMm": 600,  "coverageM2": 0.36 },
+  { "id": "corner_trap_floor_ceil", "name": "Floor-to-ceiling corner trap",   "type": "bass_trap", "thicknessMm": 300, "widthMm": 600, "heightMm": 2400, "coverageM2": 1.44 },
+  { "id": "superchunk_corner",      "name": "Superchunk corner trap",         "type": "bass_trap", "thicknessMm": 420, "widthMm": 600, "heightMm": 1200, "coverageM2": 0.72 },
+  { "id": "ceiling_cloud_60x120",   "name": "Ceiling cloud 60×120, 100mm",    "type": "broadband", "thicknessMm": 100, "widthMm": 600, "heightMm": 1200, "coverageM2": 0.72 }
+]

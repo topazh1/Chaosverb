@@ -60,4 +60,51 @@ final class AcousticsTests: XCTestCase {
         XCTAssertTrue(SBIR.nullIsProblematic(distance: 1.0))                  // 85.8 Hz in band
         XCTAssertFalse(SBIR.nullIsProblematic(distance: 0.3))                 // 285.8 Hz out of band
     }
+
+    func testPlacementIsEquilateralAt38Percent() {
+        let s = Placement.recommend(room: room, monitorFrontDistance: 0.5)
+        XCTAssertEqual(s.listener.x, 1.9, accuracy: 1e-9)            // 0.38 * 5
+        func dist(_ a: Point3, _ b: Point3) -> Double {
+            (pow(a.x-b.x,2) + pow(a.y-b.y,2) + pow(a.z-b.z,2)).squareRoot()
+        }
+        let lr = dist(s.leftMonitor, s.rightMonitor)
+        XCTAssertEqual(lr, dist(s.leftMonitor, s.listener), accuracy: 1e-6)
+        XCTAssertEqual(lr, dist(s.rightMonitor, s.listener), accuracy: 1e-6)
+        XCTAssertEqual(lr, s.monitorSpacing, accuracy: 1e-6)
+        XCTAssertEqual(s.toeInDegrees, 30)
+        XCTAssertTrue(s.fits(in: room))
+    }
+
+    func testCatalogLoadsBundledData() {
+        XCTAssertFalse(Catalog.monitors.isEmpty)
+        XCTAssertFalse(Catalog.materials.isEmpty)
+        XCTAssertFalse(Catalog.panels.isEmpty)
+        XCTAssertEqual(Catalog.monitor(id: "yamaha_hs8")?.brand, "Yamaha")
+        // Absorption coefficients must be in [0,1].
+        for m in Catalog.materials {
+            for band in OctaveBand.allCases {
+                XCTAssertTrue((0...1).contains(m.coefficient(at: band)), "\(m.id) \(band)")
+            }
+        }
+    }
+
+    func testRecommendationReportIsCoherent() {
+        let tags = MaterialTags(byBoundary: [
+            .floor: "carpet_thin", .ceiling: "gypsum_ceiling",
+            .frontWall: "drywall", .backWall: "drywall",
+            .leftWall: "drywall", .rightWall: "glass",
+        ])
+        let report = RecommendationEngine.generate(room: room, tags: tags)
+        XCTAssertFalse(report.isMeasured)
+        XCTAssertGreaterThan(report.rt60, 0)
+        // Has at least the core categories.
+        let cats = Set(report.items.map(\.category))
+        XCTAssertTrue(cats.contains(.placement))
+        XCTAssertTrue(cats.contains(.reflection))
+        XCTAssertTrue(cats.contains(.bassTrap))
+        // Sorted high → low priority.
+        XCTAssertEqual(report.items, report.items.sorted { $0.priority > $1.priority })
+        // Reflection items carry AR locations.
+        XCTAssertTrue(report.items.filter { $0.category == .reflection }.allSatisfy { $0.location != nil })
+    }
 }

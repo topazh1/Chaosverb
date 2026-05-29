@@ -1,0 +1,15 @@
+[
+  { "id": "yamaha_hs5",      "brand": "Yamaha",   "model": "HS5",       "heightMm": 285, "widthMm": 170, "depthMm": 222, "port": "rear",  "recommendedWallDistanceM": 0.30 },
+  { "id": "yamaha_hs7",      "brand": "Yamaha",   "model": "HS7",       "heightMm": 332, "widthMm": 210, "depthMm": 284, "port": "rear",  "recommendedWallDistanceM": 0.35 },
+  { "id": "yamaha_hs8",      "brand": "Yamaha",   "model": "HS8",       "heightMm": 390, "widthMm": 250, "depthMm": 334, "port": "rear",  "recommendedWallDistanceM": 0.40 },
+  { "id": "krk_rokit5_g4",   "brand": "KRK",      "model": "Rokit 5 G4","heightMm": 285, "widthMm": 185, "depthMm": 241, "port": "front", "recommendedWallDistanceM": 0.20 },
+  { "id": "krk_rokit7_g4",   "brand": "KRK",      "model": "Rokit 7 G4","heightMm": 330, "widthMm": 230, "depthMm": 285, "port": "front", "recommendedWallDistanceM": 0.25 },
+  { "id": "genelec_8030",    "brand": "Genelec",  "model": "8030C",     "heightMm": 285, "widthMm": 189, "depthMm": 178, "port": "rear",  "recommendedWallDistanceM": 0.30 },
+  { "id": "genelec_8040",    "brand": "Genelec",  "model": "8040B",     "heightMm": 350, "widthMm": 237, "depthMm": 223, "port": "rear",  "recommendedWallDistanceM": 0.35 },
+  { "id": "adam_t5v",        "brand": "ADAM",     "model": "T5V",       "heightMm": 298, "widthMm": 180, "depthMm": 280, "port": "rear",  "recommendedWallDistanceM": 0.35 },
+  { "id": "adam_t7v",        "brand": "ADAM",     "model": "T7V",       "heightMm": 333, "widthMm": 210, "depthMm": 293, "port": "rear",  "recommendedWallDistanceM": 0.40 },
+  { "id": "focal_alpha65",   "brand": "Focal",    "model": "Alpha 65",  "heightMm": 388, "widthMm": 250, "depthMm": 295, "port": "front", "recommendedWallDistanceM": 0.25 },
+  { "id": "neumann_kh120",   "brand": "Neumann",  "model": "KH 120 A",  "heightMm": 277, "widthMm": 182, "depthMm": 220, "port": "rear",  "recommendedWallDistanceM": 0.30 },
+  { "id": "presonus_e35",    "brand": "PreSonus", "model": "Eris E3.5",  "heightMm": 210, "widthMm": 141, "depthMm": 162, "port": "rear",  "recommendedWallDistanceM": 0.20 },
+  { "id": "generic",         "brand": "Generic",  "model": "Custom",     "heightMm": 300, "widthMm": 200, "depthMm": 250, "port": "rear",  "recommendedWallDistanceM": 0.30 }
+]

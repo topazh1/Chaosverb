@@ -1,0 +1,12 @@
+[
+  { "id": "drywall",        "name": "Drywall / painted plaster",  "absorption": { "125": 0.10, "250": 0.08, "500": 0.05, "1000": 0.03, "2000": 0.03, "4000": 0.03 } },
+  { "id": "concrete",       "name": "Bare concrete / brick",       "absorption": { "125": 0.02, "250": 0.02, "500": 0.03, "1000": 0.03, "2000": 0.04, "4000": 0.05 } },
+  { "id": "glass",          "name": "Glass window",                "absorption": { "125": 0.18, "250": 0.06, "500": 0.04, "1000": 0.03, "2000": 0.02, "4000": 0.02 } },
+  { "id": "wood_floor",     "name": "Wood floor on joists",        "absorption": { "125": 0.15, "250": 0.11, "500": 0.10, "1000": 0.07, "2000": 0.06, "4000": 0.07 } },
+  { "id": "carpet_thin",    "name": "Thin carpet on concrete",     "absorption": { "125": 0.02, "250": 0.06, "500": 0.14, "1000": 0.37, "2000": 0.60, "4000": 0.65 } },
+  { "id": "carpet_thick",   "name": "Thick carpet + underlay",     "absorption": { "125": 0.08, "250": 0.24, "500": 0.57, "1000": 0.69, "2000": 0.71, "4000": 0.73 } },
+  { "id": "curtain_heavy",  "name": "Heavy curtain (draped)",      "absorption": { "125": 0.14, "250": 0.35, "500": 0.55, "1000": 0.72, "2000": 0.70, "4000": 0.65 } },
+  { "id": "gypsum_ceiling", "name": "Gypsum board ceiling",        "absorption": { "125": 0.29, "250": 0.10, "500": 0.05, "1000": 0.04, "2000": 0.07, "4000": 0.09 } },
+  { "id": "acoustic_tile",  "name": "Acoustic ceiling tile",       "absorption": { "125": 0.30, "250": 0.45, "500": 0.65, "1000": 0.78, "2000": 0.80, "4000": 0.80 } },
+  { "id": "open_door",      "name": "Open doorway",                "absorption": { "125": 1.00, "250": 1.00, "500": 1.00, "1000": 1.00, "2000": 1.00, "4000": 1.00 } }
+]

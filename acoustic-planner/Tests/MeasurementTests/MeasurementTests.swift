@@ -77,4 +77,65 @@ final class MeasurementTests: XCTestCase {
         XCTAssertGreaterThan(report.modeFindings.filter { $0.status == .damped }.count, 0)
         XCTAssertTrue(report.unexplained.isEmpty)
     }
+
+    // MARK: - Impulse response (WAV + Schroeder)
+
+    /// Deterministic exponentially-decaying noise with a known RT60, encoded as
+    /// a 16-bit mono PCM WAV.
+    private func makeDecayWAV(rt60: Double, fs: Double = 48000) -> Data {
+        let n = Int(fs * (rt60 * 1.5 + 0.2))
+        var seed: UInt64 = 1
+        func rnd() -> Double {                       // simple LCG in [-1,1]
+            seed = seed &* 6364136223846793005 &+ 1442695040888963407
+            return Double(Int64(bitPattern: seed)) / Double(Int64.max)
+        }
+        var pcm = Data()
+        for i in 0..<n {
+            let amp = pow(10.0, -3 * Double(i) / fs / rt60)
+            let v = Int16(max(-1, min(1, amp * rnd())) * 32767)
+            pcm.append(UInt8(truncatingIfNeeded: v)); pcm.append(UInt8(truncatingIfNeeded: v >> 8))
+        }
+        func le32(_ v: UInt32) -> Data { withUnsafeBytes(of: v.littleEndian) { Data($0) } }
+        func le16(_ v: UInt16) -> Data { withUnsafeBytes(of: v.littleEndian) { Data($0) } }
+        var wav = Data("RIFF".utf8)
+        wav += le32(UInt32(36 + pcm.count)); wav += Data("WAVE".utf8)
+        wav += Data("fmt ".utf8); wav += le32(16); wav += le16(1); wav += le16(1)
+        wav += le32(UInt32(fs)); wav += le32(UInt32(fs) * 2); wav += le16(2); wav += le16(16)
+        wav += Data("data".utf8); wav += le32(UInt32(pcm.count)); wav += pcm
+        return wav
+    }
+
+    func testWAVDecodeAndRT60() throws {
+        let ir = try WAVDecoder.decode(makeDecayWAV(rt60: 0.5))
+        XCTAssertEqual(ir.sampleRate, 48000)
+        XCTAssertGreaterThan(ir.samples.count, 24000)
+        let rt = try XCTUnwrap(ReverbDecay.rt60(ir))
+        XCTAssertEqual(rt, 0.5, accuracy: 0.075)        // within 15%
+    }
+
+    func testWAVDecodeRejectsGarbage() {
+        XCTAssertThrowsError(try WAVDecoder.decode(Data([0, 1, 2, 3, 4, 5])))
+    }
+
+    // MARK: - Measured refinement
+
+    func testMeasuredRefinementEscalatesAndOverridesRT60() throws {
+        let room = RoomDimensions(length: 5.0, width: 4.0, height: 3.0)
+        let predicted = RecommendationEngine.generate(room: room, tags: MaterialTags(uniform: "drywall"))
+        XCTAssertFalse(predicted.isMeasured)
+
+        let modes = RoomModes.calculate(room)
+        let peaks = PeakDetector.detect(try REWTextParser.parse(rewText).response)
+        let recon = Reconciliation.reconcile(modes: modes, peaks: peaks)
+
+        let refined = MeasuredRefinement.refine(
+            predicted: predicted, reconciliation: recon,
+            measuredRT60: [.hz500: 0.42])
+
+        XCTAssertTrue(refined.isMeasured)
+        XCTAssertEqual(refined.rt60, 0.42, accuracy: 1e-9)     // measured overrides Sabine
+        // The confirmed-resonance item is high priority and surfaces first.
+        XCTAssertEqual(refined.items.first?.category, .bassTrap)
+        XCTAssertTrue(refined.items.first?.title.contains("Measured") ?? false)
+    }
 }

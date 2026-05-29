@@ -12,7 +12,7 @@ let package = Package(
         .library(name: "Measurement", targets: ["Measurement"]),
     ],
     targets: [
-        .target(name: "Acoustics"),
+        .target(name: "Acoustics", resources: [.process("Resources")]),
         .target(name: "Measurement", dependencies: ["Acoustics"]),
         .testTarget(name: "AcousticsTests", dependencies: ["Acoustics"]),
         .testTarget(name: "MeasurementTests", dependencies: ["Measurement"]),
