@@ -13,6 +13,19 @@ public struct ListeningSetup: Equatable {
     public let monitorDistanceFromFrontWall: Double
     public let earHeight: Double                  // tweeter height = seated ears
 
+    public init(listener: Point3, leftMonitor: Point3, rightMonitor: Point3,
+                monitorSpacing: Double, listeningDistance: Double, toeInDegrees: Double,
+                monitorDistanceFromFrontWall: Double, earHeight: Double) {
+        self.listener = listener
+        self.leftMonitor = leftMonitor
+        self.rightMonitor = rightMonitor
+        self.monitorSpacing = monitorSpacing
+        self.listeningDistance = listeningDistance
+        self.toeInDegrees = toeInDegrees
+        self.monitorDistanceFromFrontWall = monitorDistanceFromFrontWall
+        self.earHeight = earHeight
+    }
+
     /// True if the monitors + a side clearance actually fit the room width.
     public func fits(in room: RoomDimensions, sideClearance: Double = 0.3) -> Bool {
         monitorSpacing + 2 * sideClearance <= room.width

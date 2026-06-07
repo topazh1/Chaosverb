@@ -29,6 +29,16 @@ public struct RecommendationReport: Equatable {
     public let absorptionToAddM2: Double  // broadband m² needed to hit target
     public let items: [RecommendationItem]
     public let isMeasured: Bool
+
+    public init(setup: ListeningSetup, problemModes: [RoomMode], rt60: Double,
+                absorptionToAddM2: Double, items: [RecommendationItem], isMeasured: Bool) {
+        self.setup = setup
+        self.problemModes = problemModes
+        self.rt60 = rt60
+        self.absorptionToAddM2 = absorptionToAddM2
+        self.items = items
+        self.isMeasured = isMeasured
+    }
 }
 
 public enum RecommendationEngine {
